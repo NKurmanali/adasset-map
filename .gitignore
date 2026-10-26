@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.data/
+.env*
+!.env.example
+*.tsbuildinfo
+*.log
+backups/
+.local-access.txt
+test-results/
+.local/
