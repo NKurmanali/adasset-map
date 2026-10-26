@@ -145,7 +145,10 @@ export default function Workspace() {
     return () => clearInterval(timer);
   }, [!!state, load]);
   const run: Run = async (action, payload) => {
-    const fingerprint = JSON.stringify({ action, payload });
+    const digest = await crypto.subtle.digest(
+      'SHA-256', new TextEncoder().encode(JSON.stringify({ action, payload })),
+    );
+    const fingerprint = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
     const pendingKey = `adasset:pending:${state?.user.id}:${fingerprint}`;
     let key = localStorage.getItem(pendingKey);
     if (!key) {

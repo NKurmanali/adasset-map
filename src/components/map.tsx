@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Map as LMap } from 'leaflet';
 import type { Row } from '@/lib/domain';
+import { labels } from '@/lib/i18n';
 const colors: Record<string, string> = {
   healthy: '#23a17c',
   remarks: '#d0a023',
@@ -110,19 +111,22 @@ export default function MapView({
       const L = module.default || module;
       layer.current.clearLayers();
       for (const a of assets) {
-        const color = colors[a.technical_state] || colors.unknown;
+        const color = ['suspended', 'dismantled'].includes(a.lifecycle)
+          ? colors.unknown : colors[a.technical_state] || colors.unknown;
+        const title = `${a.number} · ${a.name} · ${t(labels[a.technical_state] || 'Неизвестно')}${a.inspection_state === 'overdue' ? ' · '+t('Просроченные осмотры') : ''}`;
         const icon = L.divIcon({
           className: 'asset-marker-wrap',
-          html: `<div class="asset-marker ${selected === a.id ? 'selected' : ''}" style="--marker:${color}"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 16v5m6-5v5M6 21h12"/></svg>${a.document_state !== 'valid' ? '<b>!</b>' : ''}</div>`,
+          html: `<div class="asset-marker ${selected === a.id ? 'selected' : ''}" style="--marker:${color}"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 16v5m6-5v5M6 21h12"/></svg>${a.document_state !== 'valid' ? '<b>!</b>' : ''}${a.inspection_state === 'overdue' ? '<b class="inspection-alert">◷</b>' : ''}</div>`,
           iconSize: [34, 39],
           iconAnchor: [17, 39],
         });
         const marker = L.marker([a.latitude, a.longitude], {
           icon,
-          title: `${a.number} · ${a.name}`,
+          title,
+          alt: title,
         });
         const tip = document.createElement('span');
-        tip.textContent = `${a.number} · ${a.name}`;
+        tip.textContent = title;
         marker.bindTooltip(tip).on('click', () => callback.current?.(a));
         layer.current.addLayer(marker);
       }
