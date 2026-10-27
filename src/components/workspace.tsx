@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState, useCallback, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
+import { COMPANY_NAME, CITY, MAP_CENTER } from '@/lib/location';
 import {
   LayoutDashboard,
   Map as MapIcon,
@@ -893,7 +894,7 @@ export default function Workspace({ allowLocalLogin = false }: { allowLocalLogin
                 <i />
                 <i />
                 <MapPin size={50} />
-                <span>43.2389° N / 76.8897° E</span>
+                <span>{MAP_CENTER[0]}° N / {MAP_CENTER[1]}° E</span>
               </div>
             </div>
             <small>Карта · Осмотры · Обслуживание</small>
@@ -916,7 +917,7 @@ export default function Workspace({ allowLocalLogin = false }: { allowLocalLogin
                 <ShieldCheck size={27} />
               </span>
               <h2>{t('Вход в рабочее пространство')}</h2>
-              <p>AdAsset · Qala</p>
+              <p>{COMPANY_NAME}</p>
               {authError && (
                 <div className="error-box" role="alert">
                   {authError}
@@ -1049,7 +1050,7 @@ export default function Workspace({ allowLocalLogin = false }: { allowLocalLogin
                   <div>
                     <h2>
                       {t('Карта конструкций')}
-                      <span className="count">Алматы</span>
+                      <span className="count">{CITY}</span>
                     </h2>
                     <p>
                       {active.length} {t('Объекты').toLowerCase()} · {state.tenant.name}
@@ -1993,9 +1994,9 @@ export default function Workspace({ allowLocalLogin = false }: { allowLocalLogin
         <aside className={`sidebar ${menu ? 'open' : ''}`}>
           <Logo />
           <button className="workspace-selector" onClick={() => changePage('settings')}>
-            <span className="workspace-avatar">Q</span>
+            <span className="workspace-avatar">S</span>
             <span>
-              <strong>Qala Operations</strong>
+              <strong>{COMPANY_NAME}</strong>
               <small>{t('Рабочее пространство')}</small>
             </span>
             <ChevronDown size={15} />
@@ -2050,7 +2051,7 @@ export default function Workspace({ allowLocalLogin = false }: { allowLocalLogin
               <Menu size={22} />
             </button>
             <div className="breadcrumbs">
-              <span>Qala Operations</span>
+              <span>{COMPANY_NAME}</span>
               <ChevronRight size={14} />
               <strong>{t(nav.find(([id]) => id === page)?.[1] || 'Мои задания')}</strong>
             </div>
@@ -2097,7 +2098,7 @@ export default function Workspace({ allowLocalLogin = false }: { allowLocalLogin
                   ? t('Все объекты и организации вымышлены.')
                   : state.tenant.name}
               </span>
-              <span>© 2026 · Qala Operations</span>
+              <span>© 2026 · {COMPANY_NAME}</span>
             </footer>
           </main>
         </div>

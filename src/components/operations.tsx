@@ -5,6 +5,7 @@ import { Check, Save, MapPin, Plus, Trash2, Loader2 } from 'lucide-react';
 import type { Row } from '@/lib/domain';
 import { Dialog, PhotoPicker, Upload, useT, Badge } from './ui';
 import { labels } from '@/lib/i18n';
+import { CITY, MAP_CENTER } from '@/lib/location';
 const MapView = dynamic(() => import('./map'), { ssr: false });
 export type Run = (action: string, payload: Row) => Promise<Row>;
 const options = (items: Row[], key = 'name') =>
@@ -29,11 +30,11 @@ export function AssetEditor({
     asset || {
       number: '',
       name: '',
-      city: 'Алматы',
+      city: CITY,
       district: state.tenant.settings.districts[0],
       type: state.asset_types[0]?.name,
-      latitude: 43.2389,
-      longitude: 76.8897,
+      latitude: MAP_CENTER[0],
+      longitude: MAP_CENTER[1],
       owner_id: state.organizations.find((o: Row) => o.kind === 'owner')?.id,
       service_id: state.organizations.find((o: Row) => o.kind === 'service')?.id,
       responsible_id:

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Map as LMap } from 'leaflet';
 import type { Row } from '@/lib/domain';
 import { labels } from '@/lib/i18n';
+import { MAP_CENTER } from '@/lib/location';
 const colors: Record<string, string> = {
   healthy: '#23a17c',
   remarks: '#d0a023',
@@ -45,7 +46,7 @@ export default function MapView({
         await import('leaflet.markercluster');
         if (cancelled || !el.current) return;
         const m = L.map(el.current, { zoomControl: false, attributionControl: true }).setView(
-          [43.239, 76.925],
+          MAP_CENTER,
           12,
         );
         map.current = m;
