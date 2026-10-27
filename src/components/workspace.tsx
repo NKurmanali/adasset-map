@@ -100,11 +100,12 @@ function Logo({ small = false }: { small?: boolean }) {
     </div>
   );
 }
-export default function Workspace() {
+export default function Workspace({ allowLocalLogin = false }: { allowLocalLogin?: boolean }) {
   const [lang, setLang] = useState<Lang>('ru'),
     [state, setState] = useState<Row | null>(null),
     [loading, setLoading] = useState(true),
-    [authError, setAuthError] = useState('');
+    [authError, setAuthError] = useState(''),
+    [authPending, setAuthPending] = useState(false);
   const [page, setPage] = useState('overview'),
     [query, setQuery] = useState(''),
     [filters, setFilters] = useState<Row>({}),
@@ -126,6 +127,25 @@ export default function Workspace() {
     if (!response.ok) throw new Error(body.error);
     setState(body);
   }, []);
+  const authenticate = async (credentials: Row) => {
+    if (authPending) return;
+    setAuthError('');
+    setAuthPending(true);
+    try {
+      const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error);
+      await load();
+    } catch (error) {
+      setAuthError((error as Error).message);
+    } finally {
+      setAuthPending(false);
+    }
+  };
   useEffect(() => {
     setLang(localStorage.getItem('adasset:lang') === 'kk' ? 'kk' : 'ru');
     load()
@@ -888,20 +908,8 @@ export default function Workspace() {
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
-                setAuthError('');
                 const data = new FormData(e.currentTarget);
-                try {
-                  const r = await fetch('/api/auth', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(Object.fromEntries(data)),
-                  });
-                  const body = await r.json();
-                  if (!r.ok) throw new Error(body.error);
-                  await load();
-                } catch (err) {
-                  setAuthError((err as Error).message);
-                }
+                await authenticate(Object.fromEntries(data));
               }}
             >
               <span className="login-symbol">
@@ -909,6 +917,29 @@ export default function Workspace() {
               </span>
               <h2>{t('Вход в рабочее пространство')}</h2>
               <p>AdAsset · Qala</p>
+              {authError && (
+                <div className="error-box" role="alert">
+                  {authError}
+                </div>
+              )}
+              {allowLocalLogin && (
+                <>
+                  <button
+                    type="button"
+                    className="button login-submit"
+                    disabled={authPending}
+                    onClick={() => authenticate({ mode: 'local' })}
+                  >
+                    {lang === 'ru' ? 'Войти без пароля' : 'Құпиясөзсіз кіру'}
+                    {authPending ? <Loader2 size={17} className="spin" /> : <ArrowRight size={17} />}
+                  </button>
+                  <small className="login-help">
+                    {lang === 'ru'
+                      ? 'Вход администратора на этом компьютере.'
+                      : 'Осы компьютерде әкімші ретінде кіру.'}
+                  </small>
+                </>
+              )}
               <label>
                 <span>Email</span>
                 <input
@@ -923,12 +954,7 @@ export default function Workspace() {
                 <span>{t('Пароль')}</span>
                 <input name="password" type="password" autoComplete="current-password" required />
               </label>
-              {authError && (
-                <div className="error-box" role="alert">
-                  {authError}
-                </div>
-              )}
-              <button className="button login-submit">
+              <button className="button login-submit" disabled={authPending}>
                 {t('Войти')}
                 <ArrowRight size={17} />
               </button>

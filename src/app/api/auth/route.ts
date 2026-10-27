@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { login, logout, currentUser, checkOrigin } from '@/lib/security';
+import { login, loginWithoutPassword, logout, currentUser, checkOrigin } from '@/lib/security';
 import { fail, privateHeaders } from '@/lib/http';
 import { z } from 'zod';
 export const runtime = 'nodejs';
@@ -14,9 +14,16 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     checkOrigin(req);
+    const body = await req.json();
+    if (body?.mode === 'local') {
+      return NextResponse.json(
+        { user: await loginWithoutPassword(req) },
+        { headers: privateHeaders },
+      );
+    }
     const data = z
       .object({ email: z.email(), password: z.string().min(1).max(200) })
-      .parse(await req.json());
+      .parse(body);
     return NextResponse.json(
       { user: await login(data.email, data.password) },
       { headers: privateHeaders },

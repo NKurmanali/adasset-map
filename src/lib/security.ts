@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import { database, flatten } from './db';
 import { AppError, assert, type Row } from './domain';
+import { localPasswordlessAllowed } from './local-access';
 export const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 export function passwordHash(password: string) {
   const salt = randomBytes(16).toString('hex');
@@ -78,6 +79,23 @@ export async function login(email: string, password: string) {
     throw new AppError('Неверный email или пароль', 401);
   }
   await db.query('DELETE FROM login_attempts WHERE key=$1', [key]);
+  return createSession(user);
+}
+export async function loginWithoutPassword(req: Request) {
+  checkOrigin(req);
+  assert(localPasswordlessAllowed(req.headers), 'Вход без пароля доступен только локально', 403);
+  const db = await database();
+  const user = (
+    await db.query(
+      "SELECT * FROM profiles WHERE email=$1 AND active=true AND data->>'demo'='true' AND 'admin'=ANY(roles)",
+      ['admin@adasset.local'],
+    )
+  ).rows[0];
+  assert(user, 'Локальный администратор недоступен', 403);
+  return createSession(user);
+}
+async function createSession(user: Row) {
+  const db = await database();
   const token = randomBytes(32).toString('hex');
   await db.query(
     "INSERT INTO sessions(id,user_id,expires_at) VALUES($1,$2,now()+interval '12 hours')",
