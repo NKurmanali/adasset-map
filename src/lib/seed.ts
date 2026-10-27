@@ -4,20 +4,26 @@ import path from 'node:path';
 import { type DB, insert, dataDir } from './db';
 import { TENANT, ROLES } from './domain';
 import { passwordHash } from './security';
+import { COMPANY_NAME, DISTRICTS, DEMO_LOCATION_VERSION, demoLocation } from './location';
+import { migrateLegacyDemoLocation } from './demo-location-migration';
 export const uid = (n: number) => `b0000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 export const date = (days: number) => new Date(Date.now() + days * 86400000).toISOString();
 export async function seed(db: DB) {
-  if ((await db.query('SELECT id FROM tenants LIMIT 1')).rows.length) return;
+  if ((await db.query('SELECT id FROM tenants LIMIT 1')).rows.length) {
+    await migrateLegacyDemoLocation(db);
+    return;
+  }
   const demo = process.env.DEMO_SEED !== 'false' && process.env.AUTH_PROVIDER !== 'supabase';
   await db.transaction(async (tx) => {
     await insert(tx, 'tenants', {
       id: TENANT,
-      name: 'AdAsset · Qala',
+      name: COMPANY_NAME,
       timezone: 'Asia/Qyzylorda',
       settings: {
         demo,
         reminder_days: [30, 14, 7],
-        districts: ['Алмалы', 'Бостандык', 'Медеу', 'Ауэзов'],
+        districts: DISTRICTS,
+        demo_location_version: DEMO_LOCATION_VERSION,
         email_configured: false,
       },
     });
@@ -58,8 +64,8 @@ export async function seed(db: DB) {
         id: uid(20 + i),
         tenant_id: TENANT,
         name: [
-          'Qala Media · Демо',
-          'Алатау Outdoor · Демо',
+          'Shymkent Reklama · Демо',
+          'Shymkent Outdoor · Демо',
           'City Vision · Демо',
           'AdAsset Service · Демо',
         ][i],
@@ -70,7 +76,7 @@ export async function seed(db: DB) {
         id: uid(30 + i),
         tenant_id: TENANT,
         name: ['Бригада «Север»', 'Бригада «Юг»'][i],
-        data: { area: i ? 'Бостандык / Медеу' : 'Алмалы / Ауэзов' },
+        data: { area: i ? 'Аль-Фарабийский / Енбекшинский / Туранский' : 'Абайский / Каратауский' },
       });
       await tx.query('INSERT INTO team_members(team_id,user_id) VALUES($1,$2)', [
         uid(30 + i),
@@ -124,30 +130,6 @@ export async function seed(db: DB) {
         name: checklist[i],
         position: i,
       });
-    const streets = [
-      'проспект Абая',
-      'улица Байтурсынова',
-      'проспект Сейфуллина',
-      'улица Толе би',
-      'проспект Достык',
-      'улица Жандосова',
-      'улица Сатпаева',
-      'проспект Назарбаева',
-      'улица Розыбакиева',
-      'улица Кабанбай батыра',
-    ];
-    const labels = [
-      'Абая / Байтурсынова',
-      'Парк первого президента',
-      'Толе би / Ауэзова',
-      'Достык / Сатпаева',
-      'Сейфуллина / Курмангазы',
-      'Орбита · въезд',
-      'Центральный стадион',
-      'Назарбаева · центр',
-      'Розыбакиева · юг',
-      'Кабанбай батыра',
-    ];
     await fs.mkdir(path.join(dataDir(), 'files'), { recursive: true });
     for (let i = 0; i < 20; i++) {
       const asset = uid(100 + i);
@@ -155,14 +137,8 @@ export async function seed(db: DB) {
       await insert(tx, 'assets', {
         id: asset,
         tenant_id: TENANT,
-        number: `ALM-${String(i + 1).padStart(4, '0')}`,
-        name: labels[i % 10] + (i >= 10 ? ' · 02' : ''),
+        ...demoLocation(i),
         type: kind,
-        address: `${streets[i % 10]}, ${30 + i * 7}`,
-        city: 'Алматы',
-        district: ['Алмалы', 'Бостандык', 'Медеу', 'Ауэзов'][i % 4],
-        latitude: 43.213 + (i % 5) * 0.014 + (i % 3) * 0.002,
-        longitude: 76.873 + Math.floor(i / 5) * 0.026 + (i % 2) * 0.006,
         owner_id: uid(20 + (i % 3)),
         service_id: uid(23),
         responsible_id: uid(2),
@@ -192,14 +168,14 @@ export async function seed(db: DB) {
         });
       const aid = uid(200 + i),
         key = aid + '.svg';
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600"><defs><linearGradient id="s" x2="0" y2="1"><stop stop-color="#d6e6ec"/><stop offset="1" stop-color="#f5f6ef"/></linearGradient><linearGradient id="b"><stop stop-color="#122e50"/><stop offset="1" stop-color="#316e8c"/></linearGradient></defs><rect width="1000" height="600" fill="url(#s)"/><path d="M0 380L200 240 350 340 540 210 800 360 1000 260V600H0" fill="#9db7af" opacity=".4"/><rect y="450" width="1000" height="150" fill="#b4bdb7"/><path d="M0 535H1000" stroke="#f3eee4" stroke-width="8" stroke-dasharray="100 65"/><rect x="490" y="220" width="29" height="274" fill="#58646a"/><rect x="207" y="118" width="590" height="286" rx="8" fill="#4b5a63"/><rect x="220" y="130" width="564" height="258" fill="url(#b)"/><circle cx="680" cy="220" r="106" fill="#75bed0" opacity=".2"/><text x="260" y="185" fill="#abd6e2" font-family="sans-serif" font-size="20">AD ASSET / DEMO ${String(i + 1).padStart(2, '0')}</text><text x="260" y="275" fill="white" font-family="sans-serif" font-size="54" font-weight="bold">Your city.</text><text x="260" y="333" fill="white" font-family="sans-serif" font-size="54" font-weight="bold">In perspective.</text><rect x="24" y="24" width="290" height="34" rx="17" fill="white" opacity=".85"/><text x="40" y="47" fill="#364452" font-family="sans-serif" font-size="16">DEMO ILLUSTRATION · ALM-${String(i + 1).padStart(4, '0')}</text></svg>`;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600"><defs><linearGradient id="s" x2="0" y2="1"><stop stop-color="#d6e6ec"/><stop offset="1" stop-color="#f5f6ef"/></linearGradient><linearGradient id="b"><stop stop-color="#122e50"/><stop offset="1" stop-color="#316e8c"/></linearGradient></defs><rect width="1000" height="600" fill="url(#s)"/><path d="M0 380L200 240 350 340 540 210 800 360 1000 260V600H0" fill="#9db7af" opacity=".4"/><rect y="450" width="1000" height="150" fill="#b4bdb7"/><path d="M0 535H1000" stroke="#f3eee4" stroke-width="8" stroke-dasharray="100 65"/><rect x="490" y="220" width="29" height="274" fill="#58646a"/><rect x="207" y="118" width="590" height="286" rx="8" fill="#4b5a63"/><rect x="220" y="130" width="564" height="258" fill="url(#b)"/><circle cx="680" cy="220" r="106" fill="#75bed0" opacity=".2"/><text x="260" y="185" fill="#abd6e2" font-family="sans-serif" font-size="20">AD ASSET / DEMO ${String(i + 1).padStart(2, '0')}</text><text x="260" y="275" fill="white" font-family="sans-serif" font-size="54" font-weight="bold">Your city.</text><text x="260" y="333" fill="white" font-family="sans-serif" font-size="54" font-weight="bold">In perspective.</text><rect x="24" y="24" width="290" height="34" rx="17" fill="white" opacity=".85"/><text x="40" y="47" fill="#364452" font-family="sans-serif" font-size="16">DEMO ILLUSTRATION · SHY-${String(i + 1).padStart(4, '0')}</text></svg>`;
       await fs.writeFile(path.join(dataDir(), 'files', key), svg);
       await insert(tx, 'attachments', {
         id: aid,
         tenant_id: TENANT,
         asset_id: asset,
         uploaded_by: uid(2),
-        name: `ALM-${i + 1}-demo.svg`,
+        name: `SHY-${i + 1}-demo.svg`,
         mime: 'image/svg+xml',
         size: Buffer.byteLength(svg),
         storage_key: key,
@@ -215,14 +191,14 @@ export async function seed(db: DB) {
       const docid = uid(300 + i),
         fileid = uid(400 + i),
         docKey = fileid + '.txt';
-      const text = `ДЕМОНСТРАЦИОННЫЙ ДОКУМЕНТ\nПаспорт объекта ALM-${String(i + 1).padStart(4, '0')}\nВымышленные сведения. Не является разрешением или юридическим документом.\nТип: ${kind}\nРазмеры: 6 × 3 м\nВладелец: демонстрационная организация\n`;
+      const text = `ДЕМОНСТРАЦИОННЫЙ ДОКУМЕНТ\nПаспорт объекта SHY-${String(i + 1).padStart(4, '0')}\nВымышленные сведения. Не является разрешением или юридическим документом.\nТип: ${kind}\nРазмеры: 6 × 3 м\nВладелец: демонстрационная организация\n`;
       await fs.writeFile(path.join(dataDir(), 'files', docKey), text);
       await insert(tx, 'attachments', {
         id: fileid,
         tenant_id: TENANT,
         asset_id: asset,
         uploaded_by: uid(2),
-        name: `Паспорт-ALM-${i + 1}-DEMO.txt`,
+        name: `Паспорт-SHY-${i + 1}-DEMO.txt`,
         mime: 'text/plain',
         size: Buffer.byteLength(text),
         storage_key: docKey,
@@ -402,9 +378,9 @@ export async function seed(db: DB) {
         user_id: uid(1),
         event_key: `demo:${i}`,
         title: [
-          'Критический дефект · ALM-0001',
-          'Работа ожидает проверки · ALM-0005',
-          'Просрочен осмотр · ALM-0009',
+          'Критический дефект · SHY-0001',
+          'Работа ожидает проверки · SHY-0005',
+          'Просрочен осмотр · SHY-0009',
         ][i],
         data: { asset_id: uid(100 + i), kind: i === 0 ? 'critical' : 'reminder' },
       });
